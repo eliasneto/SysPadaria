@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Dashboard | SysPadaria{% endblock %}
+{% block content %}
+<div class="sys-card rounded-4 p-4 p-md-5 mb-4">
+  <h1 class="display-6 sys-login-title mb-2">Dashboard inicial</h1>
+  <p class="sys-helper mb-0">A base modular da padaria ja esta pronta para receber os blocos de negocio.</p>
+</div>
+<div class="row g-3">
+  <div class="col-md-6 col-lg-3">
+    <a class="btn btn-sys-primary w-100 py-3 rounded-4" href="{% url 'sales-home' %}">Vendas / Caixa</a>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <a class="btn btn-sys-secondary w-100 py-3 rounded-4" href="{% url 'inventory-home' %}">Estoque</a>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <a class="btn btn-sys-primary w-100 py-3 rounded-4" href="{% url 'finance-home' %}">Financeiro</a>
+  </div>
+  <div class="col-md-6 col-lg-3">
+    <a class="btn btn-sys-secondary w-100 py-3 rounded-4" href="{% url 'reports-home' %}">Relatorios</a>
+  </div>
+</div>
+{% endblock %}

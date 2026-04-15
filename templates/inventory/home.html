@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% block title %}Estoque | SysPadaria{% endblock %}
+{% block content %}
+<div class="sys-card rounded-4 p-3 p-md-4 mb-4">
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+    <div>
+      <h1 class="h3 sys-login-title mb-1">Estoque</h1>
+      <p class="sys-helper mb-0">Cadastro rápido de produtos e categorias, pensado para uso no celular e integrado com as vendas.</p>
+    </div>
+    <a class="btn btn-sys-secondary rounded-pill px-4" href="#product-form">Novo produto</a>
+  </div>
+</div>
+
+<div class="sys-card rounded-4 p-3 p-md-4 mb-4">
+  <form method="get" class="row g-3 align-items-end">
+    <div class="col-12 col-md-5">
+      <label class="form-label fw-semibold">Buscar produto</label>
+      <input type="search" name="q" value="{{ filter_state.q }}" class="form-control sys-input" placeholder="Ex.: pão, café, bolo">
+    </div>
+    <div class="col-12 col-md-4">
+      <label class="form-label fw-semibold">Categoria</label>
+      <select name="category" class="form-select sys-input">
+        <option value="">Todas</option>
+        {% for category in categories %}
+          <option value="{{ category.pk }}" {% if filter_state.category == category.pk|stringformat:'s' %}selected{% endif %}>{{ category.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-12 col-md-3">
+      <label class="form-label fw-semibold">Atalho</label>
+      <select name="quick_sale" class="form-select sys-input">
+        <option value="">Todos</option>
+        <option value="1" {% if filter_state.quick_sale %}selected{% endif %}>Só produtos rápidos</option>
+      </select>
+    </div>
+    <div class="col-12 d-flex gap-2">
+      <button type="submit" class="btn btn-sys-primary rounded-4 px-4">Filtrar</button>
+      <a href="{% url 'inventory-home' %}" class="btn btn-outline-secondary rounded-4 px-4">Limpar</a>
+    </div>
+  </form>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="sys-card rounded-4 p-3">
+      <div class="sale-total-label">Produtos</div>
+      <div class="sale-total-value fs-2">{{ summary.total_products }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="sys-card rounded-4 p-3">
+      <div class="sale-total-label">Ativos</div>
+      <div class="sale-total-value fs-2">{{ summary.active_products }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="sys-card rounded-4 p-3">
+      <div class="sale-total-label">Estoque total</div>
+      <div class="sale-total-value fs-2">{{ summary.stock_total }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="sys-card rounded-4 p-3">
+      <div class="sale-total-label">Baixo estoque</div>
+      <div class="sale-total-value fs-2">{{ summary.low_stock_count }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-12 col-xl-4">
+    <div class="sys-card rounded-4 p-3 p-md-4 h-100">
+      <h2 class="h5 mb-3">Cadastrar categoria</h2>
+      <form method="post" class="vstack gap-3">
+        {% csrf_token %}
+        <input type="hidden" name="form_type" value="category">
+        <div>
+          <label class="form-label fw-semibold">Nome</label>
+          {{ category_form.name }}
+          {{ category_form.name.errors }}
+        </div>
+        <div class="form-check">
+          {{ category_form.is_active }}
+          <label class="form-check-label fw-semibold" for="{{ category_form.is_active.id_for_label }}">Ativa</label>
+        </div>
+        {% if category_form.non_field_errors %}
+          <div class="alert alert-danger mb-0">{{ category_form.non_field_errors }}</div>
+        {% endif %}
+        <button type="submit" class="btn btn-sys-secondary rounded-4">Salvar categoria</button>
+      </form>
+      <div class="mt-4">
+        <h3 class="h6 mb-3">Categorias cadastradas</h3>
+        <div class="vstack gap-2">
+          {% for category in categories %}
+            <div class="border rounded-4 p-3 d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <div class="fw-semibold">{{ category.name }}</div>
+                <div class="small sys-helper">{% if category.is_active %}Ativa{% else %}Inativa{% endif %}</div>
+              </div>
+              <div class="d-flex gap-2">
+                <a class="btn btn-outline-secondary btn-sm rounded-pill" href="{% url 'inventory-category-edit' category.pk %}">Editar</a>
+                <a class="btn btn-outline-danger btn-sm rounded-pill" href="{% url 'inventory-category-delete' category.pk %}">Excluir</a>
+              </div>
+            </div>
+          {% empty %}
+            <div class="text-center py-3 sys-helper">Nenhuma categoria cadastrada ainda.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-xl-8" id="product-form">
+    <div class="sys-card rounded-4 p-3 p-md-4">
+      <h2 class="h5 mb-3">Cadastrar produto</h2>
+      <form method="post" class="vstack gap-3">
+        {% csrf_token %}
+        <input type="hidden" name="form_type" value="product">
+        <div>
+          <label class="form-label fw-semibold">Nome</label>
+          {{ form.name }}
+          {{ form.name.errors }}
+        </div>
+        <div>
+          <label class="form-label fw-semibold">Categoria</label>
+          {{ form.category_ref }}
+          {{ form.category_ref.errors }}
+        </div>
+        <div class="row g-3">
+          <div class="col-6">
+            <label class="form-label fw-semibold">Estoque</label>
+            {{ form.current_stock }}
+            {{ form.current_stock.errors }}
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold">Estoque mín.</label>
+            {{ form.min_stock }}
+            {{ form.min_stock.errors }}
+          </div>
+        </div>
+        <div class="row g-3">
+          <div class="col-6">
+            <label class="form-label fw-semibold">Preço de venda</label>
+            {{ form.sale_price }}
+            {{ form.sale_price.errors }}
+          </div>
+          <div class="col-6 d-flex align-items-end">
+            <div class="form-check mb-2">
+              {{ form.is_active }}
+              <label class="form-check-label fw-semibold" for="{{ form.is_active.id_for_label }}">Ativo</label>
+            </div>
+          </div>
+        </div>
+        <div class="form-check">
+          {{ form.is_quick_sale }}
+          <label class="form-check-label fw-semibold" for="{{ form.is_quick_sale.id_for_label }}">
+            Produto rápido para a venda
+          </label>
+          <div class="small sys-helper">Marque até 12 produtos que aparecerão na tela rápida de vendas.</div>
+          {{ form.is_quick_sale.errors }}
+        </div>
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger mb-0">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <button type="submit" class="btn btn-sys-primary btn-lg rounded-4">Salvar produto</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="sys-card rounded-4 p-3 p-md-4">
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+    <h2 class="h5 mb-0">Produtos cadastrados</h2>
+    <span class="badge rounded-pill text-bg-light border">{{ products.paginator.count }}</span>
+  </div>
+
+  <div class="vstack gap-3">
+    {% for product in products %}
+      <div class="border rounded-4 p-3">
+        <div class="d-flex justify-content-between gap-3">
+          <div>
+            <div class="small text-uppercase sys-helper">
+              {% if product.category_ref %}{{ product.category_ref.name }}{% else %}Sem categoria{% endif %}
+            </div>
+            <div class="sale-product-name">{{ product.name }}</div>
+            <div class="sale-product-price">
+              Estoque: {{ product.current_stock }} | Mín.: {{ product.min_stock }} | R$ {{ product.sale_price|floatformat:2 }}
+            </div>
+          </div>
+          <div class="text-end">
+            {% if product.is_active %}
+              <span class="badge text-bg-success">Ativo</span>
+            {% else %}
+              <span class="badge text-bg-secondary">Inativo</span>
+            {% endif %}
+          </div>
+        </div>
+        <form method="post" class="mt-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+          {% csrf_token %}
+          <input type="hidden" name="form_type" value="quick_toggle">
+          <input type="hidden" name="product_id" value="{{ product.pk }}">
+          <div class="form-check mb-0">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              name="is_quick_sale"
+              id="quick-sale-{{ product.pk }}"
+              {% if product.is_quick_sale %}checked{% endif %}
+              onchange="this.form.submit()"
+            >
+            <label class="form-check-label fw-semibold" for="quick-sale-{{ product.pk }}">
+              Produto rápido para venda
+            </label>
+            <div class="small sys-helper">Marque este item para aparecer na tela rápida de vendas.</div>
+          </div>
+          {% if product.is_quick_sale %}
+            <span class="badge text-bg-warning">Rápido</span>
+          {% endif %}
+        </form>
+        <div class="d-flex gap-2 mt-3">
+          <a class="btn btn-outline-secondary btn-sm rounded-pill" href="{% url 'inventory-product-edit' product.pk %}">Editar</a>
+          <a class="btn btn-outline-danger btn-sm rounded-pill" href="{% url 'inventory-product-delete' product.pk %}">Excluir</a>
+        </div>
+      </div>
+    {% empty %}
+      <div class="text-center py-4 sys-helper">Nenhum produto cadastrado ainda.</div>
+    {% endfor %}
+  </div>
+
+  {% if products.paginator.num_pages > 1 %}
+    <nav class="mt-4">
+      <ul class="pagination pagination-sm justify-content-center flex-wrap gap-1 mb-0">
+        {% if products.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ products.previous_page_number }}">Anterior</a>
+          </li>
+        {% endif %}
+        {% for num in products.paginator.page_range %}
+          <li class="page-item {% if products.number == num %}active{% endif %}">
+            <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ num }}">{{ num }}</a>
+          </li>
+        {% endfor %}
+        {% if products.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ products.next_page_number }}">Próxima</a>
+          </li>
+        {% endif %}
+      </ul>
+    </nav>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Editar produto | SysPadaria{% endblock %}
+{% block content %}
+<div class="sys-card rounded-4 p-3 p-md-4">
+  <h1 class="h3 sys-login-title mb-1">Editar produto</h1>
+  <p class="sys-helper mb-4">Atualize os dados do item do estoque.</p>
+  <form method="post" class="vstack gap-3">
+    {% csrf_token %}
+    <div>
+      <label class="form-label fw-semibold">Nome</label>
+      {{ form.name }}
+      {{ form.name.errors }}
+    </div>
+    <div>
+      <label class="form-label fw-semibold">Categoria</label>
+      {{ form.category_ref }}
+      {{ form.category_ref.errors }}
+    </div>
+    <div class="row g-3">
+      <div class="col-6">
+        <label class="form-label fw-semibold">Estoque</label>
+        {{ form.current_stock }}
+        {{ form.current_stock.errors }}
+      </div>
+      <div class="col-6">
+        <label class="form-label fw-semibold">Estoque mín.</label>
+        {{ form.min_stock }}
+        {{ form.min_stock.errors }}
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-6">
+        <label class="form-label fw-semibold">Preço de venda</label>
+        {{ form.sale_price }}
+        {{ form.sale_price.errors }}
+      </div>
+      <div class="col-6 d-flex align-items-end">
+        <div class="form-check mb-2">
+          {{ form.is_active }}
+          <label class="form-check-label fw-semibold" for="{{ form.is_active.id_for_label }}">Ativo</label>
+        </div>
+      </div>
+    </div>
+    <div class="form-check">
+      {{ form.is_quick_sale }}
+      <label class="form-check-label fw-semibold" for="{{ form.is_quick_sale.id_for_label }}">
+        Produto rápido para a venda
+      </label>
+      <div class="small sys-helper">Marque até 12 produtos que aparecerão na tela rápida de vendas.</div>
+      {{ form.is_quick_sale.errors }}
+    </div>
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger mb-0">{{ form.non_field_errors }}</div>
+    {% endif %}
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-sys-primary rounded-4">Salvar</button>
+      <a href="{% url 'inventory-home' %}" class="btn btn-outline-secondary rounded-4">Voltar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} | SysPadaria{% endblock %}
+{% block content %}
+<div class="sys-card rounded-4 p-4 p-md-5">
+  <div class="d-flex align-items-start gap-3">
+    <div class="rounded-4 p-3" style="background: rgba(143, 190, 94, 0.16);">
+      <span class="fw-bold" style="color: var(--sys-green-dark);">M</span>
+    </div>
+    <div>
+      <h1 class="h3 sys-login-title mb-2">{{ title }}</h1>
+      <p class="sys-helper mb-0">Modulo estruturado e pronto para receber regras, telas e integracoes.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

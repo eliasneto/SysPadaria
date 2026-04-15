@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+{% block title %}Nova venda | SysPadaria{% endblock %}
+{% block content %}
+<div class="sys-card rounded-4 p-3 p-md-4 mb-4">
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+    <div>
+      <h1 class="h3 sys-login-title mb-1">Nova venda</h1>
+      <p class="sys-helper mb-0">Tela rápida para uso no balcão ou no celular.</p>
+    </div>
+    <div class="text-md-end">
+      <div class="small text-uppercase sys-helper">Vendas registradas</div>
+      <div class="fs-3 fw-bold" style="color: var(--sys-gold-dark);">{{ sale_count }}</div>
+      <a class="btn btn-outline-secondary btn-sm rounded-pill mt-2" href="{% url 'sales-history' %}">Histórico de vendas</a>
+    </div>
+  </div>
+</div>
+
+{% if not quick_products %}
+  <div class="alert alert-warning sys-card border-0">
+    Nenhum produto rápido cadastrado ainda. Marque até 12 produtos no módulo de estoque para liberá-los aqui.
+  </div>
+{% endif %}
+
+<form method="post" class="vstack gap-4" id="sale-form">
+  {% csrf_token %}
+
+  <div class="sys-card rounded-4 p-3 p-md-4">
+    <h2 class="h5 mb-3">Forma de pagamento</h2>
+    <div class="payment-grid">
+      {% for radio in form.payment_method %}
+        <div class="payment-option">
+          {{ radio.tag }}
+          <label for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+        </div>
+      {% endfor %}
+    </div>
+    {% if form.payment_method.errors %}
+      <div class="text-danger small mt-2">{{ form.payment_method.errors }}</div>
+    {% endif %}
+  </div>
+
+  <div class="sys-card rounded-4 p-3 p-md-4" id="products-section">
+    <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+      <h2 class="h5 mb-0">Produtos rápidos</h2>
+      <span class="badge rounded-pill text-bg-light border">Toque para adicionar</span>
+    </div>
+
+    <div class="product-grid">
+      {% for product in quick_products %}
+        <button
+          type="button"
+          class="product-chip{% if product.current_stock <= product.min_stock %} is-low-stock{% endif %}"
+          data-product-id="{{ product.id }}"
+          data-product-name="{{ product.name }}"
+          data-product-price="{{ product.sale_price|floatformat:2 }}"
+        >
+          {% if product.current_stock <= product.min_stock %}
+            <span class="product-chip-alert">Estoque baixo</span>
+          {% endif %}
+          <div class="sale-product-name">{{ product.name }}</div>
+          <div class="sale-product-price">R$ {{ product.sale_price|floatformat:2 }}</div>
+          <div class="sale-product-stock">Estoque: {{ product.current_stock }} | Mín.: {{ product.min_stock }}</div>
+        </button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="sys-card rounded-4 p-3 p-md-4">
+    <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+      <h2 class="h5 mb-0">Itens da venda</h2>
+      <button type="button" class="btn btn-sys-secondary btn-sm rounded-pill px-3" id="add-item">
+        + Adicionar item
+      </button>
+    </div>
+
+    {{ formset.management_form }}
+
+    <div id="items-list" class="vstack gap-3">
+      {% for item_form in formset.forms %}
+        <div class="sale-item-row border rounded-4 p-3" data-form-row data-unit-price="{{ item_form.instance.unit_price|floatformat:2 }}">
+          {{ item_form.product }}
+          <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+            <div>
+              <div class="small text-uppercase sys-helper">Produto</div>
+              <div class="sale-product-name js-product-label">
+                {% if item_form.instance.product_id %}
+                  {{ item_form.instance.product.name }}
+                {% else %}
+                  Toque em um produto acima
+                {% endif %}
+              </div>
+              <div class="sale-product-price js-product-price">
+                {% if item_form.instance.product_id %}
+                  R$ {{ item_form.instance.unit_price|floatformat:2 }}
+                {% endif %}
+              </div>
+            </div>
+            <button type="button" class="btn btn-outline-danger btn-sm rounded-pill js-remove-item">Remover</button>
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-outline-secondary rounded-circle js-qty-minus" style="width: 44px; height: 44px;">-</button>
+            <div class="flex-grow-1">
+              <label class="form-label fw-semibold">Quantidade</label>
+              {{ item_form.quantity }}
+            </div>
+            <button type="button" class="btn btn-outline-secondary rounded-circle js-qty-plus" style="width: 44px; height: 44px;">+</button>
+          </div>
+        </div>
+      {% empty %}
+        <div class="text-center py-4 sys-helper" id="empty-items-state">
+          Nenhum item selecionado ainda. Toque em um produto acima para começar.
+        </div>
+      {% endfor %}
+    </div>
+
+    <template id="empty-form-template">
+      <div class="sale-item-row border rounded-4 p-3" data-form-row data-unit-price="0">
+        {{ formset.empty_form.product }}
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+          <div>
+            <div class="small text-uppercase sys-helper">Produto</div>
+            <div class="sale-product-name js-product-label">Toque em um produto acima</div>
+            <div class="sale-product-price js-product-price"></div>
+          </div>
+          <button type="button" class="btn btn-outline-danger btn-sm rounded-pill js-remove-item">Remover</button>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <button type="button" class="btn btn-outline-secondary rounded-circle js-qty-minus" style="width: 44px; height: 44px;">-</button>
+          <div class="flex-grow-1">
+            <label class="form-label fw-semibold">Quantidade</label>
+            {{ formset.empty_form.quantity }}
+          </div>
+          <button type="button" class="btn btn-outline-secondary rounded-circle js-qty-plus" style="width: 44px; height: 44px;">+</button>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <div class="sys-card rounded-4 p-3 p-md-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+      <div>
+        <div class="small text-uppercase sys-helper">Resumo</div>
+        <div class="fw-semibold">Venda pronta para finalizar</div>
+      </div>
+      <div class="sale-total-panel">
+        <div>
+          <div class="sale-total-label">Total da venda</div>
+          <div class="sale-total-value" id="sale-total">R$ 0,00</div>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-sys-primary btn-lg rounded-4 px-4">
+        Finalizar venda
+      </button>
+    </div>
+  </div>
+</form>
+
+<script>
+  (function () {
+    const formPrefix = "{{ formset.prefix }}";
+    const itemsList = document.getElementById("items-list");
+    const emptyState = document.getElementById("empty-items-state");
+    const addItemButton = document.getElementById("add-item");
+    const totalFormsInput = document.getElementById(`id_${formPrefix}-TOTAL_FORMS`);
+    const template = document.getElementById("empty-form-template");
+    const productButtons = document.querySelectorAll(".product-chip");
+    const totalDisplay = document.getElementById("sale-total");
+    const paymentInputs = document.querySelectorAll('input[name="payment_method"]');
+    const productsSection = document.getElementById("products-section");
+
+    function rowCount() {
+      return itemsList.querySelectorAll("[data-form-row]").length;
+    }
+
+    function parseMoney(value) {
+      return parseFloat(String(value || "0").replace(",", ".")) || 0;
+    }
+
+    function formatMoney(value) {
+      return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+    }
+
+    function updateEmptyState() {
+      if (emptyState) {
+        emptyState.style.display = rowCount() === 0 ? "block" : "none";
+      }
+    }
+
+    function updateTotal() {
+      let total = 0;
+      itemsList.querySelectorAll("[data-form-row]").forEach((row) => {
+        const hiddenProductInput = row.querySelector('input[name$="-product"]');
+        const quantityInput = row.querySelector('input[name$="-quantity"]');
+        const unitPriceInput = row.querySelector('input[name$="-unit_price"]');
+        const unitPrice = parseMoney(unitPriceInput?.value || row.dataset.unitPrice);
+        const quantity = parseMoney(quantityInput?.value);
+
+        if (hiddenProductInput && hiddenProductInput.value) {
+          total += unitPrice * quantity;
+        }
+      });
+      totalDisplay.textContent = formatMoney(total);
+    }
+
+    function renumberRows() {
+      const rows = itemsList.querySelectorAll("[data-form-row]");
+      rows.forEach((row, index) => {
+        row.querySelectorAll("input, select, textarea").forEach((field) => {
+          if (field.name) field.name = field.name.replace(/saleitem_set-\d+-/g, `${formPrefix}-${index}-`);
+          if (field.id) field.id = field.id.replace(/saleitem_set-\d+-/g, `${formPrefix}-${index}-`);
+        });
+      });
+      totalFormsInput.value = rows.length;
+      updateEmptyState();
+    }
+
+    function wireRow(row) {
+      const quantityInput = row.querySelector('input[name$="-quantity"]');
+      const hiddenProductInput = row.querySelector('input[name$="-product"]');
+      const label = row.querySelector(".js-product-label");
+      const price = row.querySelector(".js-product-price");
+
+      row.querySelector(".js-remove-item").onclick = () => {
+        if (rowCount() === 1) {
+          hiddenProductInput.value = "";
+          quantityInput.value = 1;
+          row.dataset.unitPrice = "0";
+          label.textContent = "Toque em um produto acima";
+          price.textContent = "";
+          updateTotal();
+          return;
+        }
+        row.remove();
+        renumberRows();
+        updateTotal();
+      };
+
+      row.querySelector(".js-qty-plus").onclick = () => {
+        quantityInput.value = (parseInt(quantityInput.value || "0", 10) + 1).toString();
+        updateTotal();
+      };
+
+      row.querySelector(".js-qty-minus").onclick = () => {
+        const current = parseInt(quantityInput.value || "1", 10);
+        quantityInput.value = Math.max(1, current - 1).toString();
+        updateTotal();
+      };
+
+      quantityInput.addEventListener("input", updateTotal);
+    }
+
+    function createRow() {
+      const nextIndex = parseInt(totalFormsInput.value, 10);
+      const html = template.innerHTML.replace(/__prefix__/g, nextIndex);
+      itemsList.insertAdjacentHTML("beforeend", html);
+      const rows = itemsList.querySelectorAll("[data-form-row]");
+      const row = rows[rows.length - 1];
+      wireRow(row);
+      renumberRows();
+      updateTotal();
+      updateEmptyState();
+      return row;
+    }
+
+    function fillRowWithProduct(row, productButton) {
+      const hiddenProductInput = row.querySelector('input[name$="-product"]');
+      const quantityInput = row.querySelector('input[name$="-quantity"]');
+      const label = row.querySelector(".js-product-label");
+      const price = row.querySelector(".js-product-price");
+
+      hiddenProductInput.value = productButton.dataset.productId;
+      quantityInput.value = quantityInput.value && quantityInput.value !== "1" ? quantityInput.value : "1";
+      row.dataset.unitPrice = productButton.dataset.productPrice;
+      label.textContent = productButton.dataset.productName;
+      price.textContent = formatMoney(parseMoney(productButton.dataset.productPrice));
+      updateTotal();
+    }
+
+    function getEmptyRow() {
+      return Array.from(itemsList.querySelectorAll("[data-form-row]")).find((row) => {
+        const hiddenProductInput = row.querySelector('input[name$="-product"]');
+        return !hiddenProductInput.value;
+      });
+    }
+
+    productButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        let row = getEmptyRow();
+        if (!row) {
+          row = createRow();
+        }
+        fillRowWithProduct(row, button);
+      });
+    });
+
+    paymentInputs.forEach((input) => {
+      input.addEventListener("change", () => {
+        if (!input.checked) {
+          return;
+        }
+
+        if (window.matchMedia("(max-width: 767.98px)").matches && productsSection) {
+          window.setTimeout(() => {
+            const top = productsSection.getBoundingClientRect().top + window.scrollY - 16;
+            window.scrollTo({ top, behavior: "smooth" });
+          }, 120);
+        }
+      });
+    });
+
+    addItemButton.addEventListener("click", () => {
+      const row = createRow();
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    itemsList.querySelectorAll("[data-form-row]").forEach(wireRow);
+    updateEmptyState();
+    updateTotal();
+  })();
+</script>
+{% endblock %}
