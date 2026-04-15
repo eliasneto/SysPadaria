@@ -1,13 +1,16 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}Estoque | SysPadaria{% endblock %}
 {% block content %}
 <div class="sys-card rounded-4 p-3 p-md-4 mb-4">
   <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
     <div>
       <h1 class="h3 sys-login-title mb-1">Estoque</h1>
-      <p class="sys-helper mb-0">Cadastro rápido de produtos e categorias, pensado para uso no celular e integrado com as vendas.</p>
+      <p class="sys-helper mb-0">Cadastro rápido de produtos, categorias e movimentações, pensado para uso no celular.</p>
     </div>
-    <a class="btn btn-sys-secondary rounded-pill px-4" href="#product-form">Novo produto</a>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline-secondary rounded-pill px-4" href="{% url 'inventory-movements' %}">Histórico de movimentações</a>
+      <a class="btn btn-sys-secondary rounded-pill px-4" href="#product-form">Novo produto</a>
+    </div>
   </div>
 </div>
 
@@ -55,8 +58,8 @@
   </div>
   <div class="col-6 col-lg-3">
     <div class="sys-card rounded-4 p-3">
-      <div class="sale-total-label">Estoque total</div>
-      <div class="sale-total-value fs-2">{{ summary.stock_total }}</div>
+      <div class="sale-total-label">Produtos rápidos</div>
+      <div class="sale-total-value fs-2">{{ summary.quick_products }}</div>
     </div>
   </div>
   <div class="col-6 col-lg-3">
@@ -195,29 +198,18 @@
             {% endif %}
           </div>
         </div>
-        <form method="post" class="mt-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
-          {% csrf_token %}
-          <input type="hidden" name="form_type" value="quick_toggle">
-          <input type="hidden" name="product_id" value="{{ product.pk }}">
-          <div class="form-check mb-0">
-            <input
-              class="form-check-input"
-              type="checkbox"
-              name="is_quick_sale"
-              id="quick-sale-{{ product.pk }}"
-              {% if product.is_quick_sale %}checked{% endif %}
-              onchange="this.form.submit()"
-            >
-            <label class="form-check-label fw-semibold" for="quick-sale-{{ product.pk }}">
-              Produto rápido para venda
-            </label>
-            <div class="small sys-helper">Marque este item para aparecer na tela rápida de vendas.</div>
-          </div>
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <button
+            type="button"
+            class="btn btn-sys-secondary btn-sm rounded-pill js-open-movement-modal"
+            data-product-id="{{ product.pk }}"
+            data-product-name="{{ product.name }}"
+          >
+            Movimentar
+          </button>
           {% if product.is_quick_sale %}
-            <span class="badge text-bg-warning">Rápido</span>
+            <span class="badge text-bg-warning align-self-center">Rápido</span>
           {% endif %}
-        </form>
-        <div class="d-flex gap-2 mt-3">
           <a class="btn btn-outline-secondary btn-sm rounded-pill" href="{% url 'inventory-product-edit' product.pk %}">Editar</a>
           <a class="btn btn-outline-danger btn-sm rounded-pill" href="{% url 'inventory-product-delete' product.pk %}">Excluir</a>
         </div>
@@ -249,4 +241,252 @@
     </nav>
   {% endif %}
 </div>
+
+<div class="movement-modal-overlay" id="movementModal" aria-hidden="true">
+  <div class="movement-modal-panel sys-card">
+    <form method="post" class="vstack gap-3" id="movement-form">
+      {% csrf_token %}
+      <input type="hidden" name="form_type" value="movement">
+      <div class="d-flex justify-content-between align-items-start gap-3">
+        <div class="pe-2">
+          <h2 class="h4 mb-1 sys-login-title">Movimentar estoque</h2>
+          <div class="small sys-helper">Retirar, transferir para outro produto ou criar um novo produto com a movimentação.</div>
+        </div>
+        <button type="button" class="btn-close flex-shrink-0" id="movement-close" aria-label="Fechar"></button>
+      </div>
+
+      <div class="movement-section">
+        <div class="alert alert-warning small mb-0">
+          Informe um motivo em todas as movimentações. A operação será registrada no histórico próprio do estoque.
+        </div>
+      </div>
+
+      <div class="movement-section">
+        <div class="movement-section-title">Dados da movimentação</div>
+        <div class="row g-3">
+          <div class="col-12 col-md-6">
+            <label class="form-label fw-semibold">Tipo de movimentação</label>
+            {{ movement_form.movement_type }}
+            {{ movement_form.movement_type.errors }}
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label fw-semibold">Produto de origem</label>
+            {{ movement_form.source_product }}
+            {{ movement_form.source_product.errors }}
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-semibold">Quantidade</label>
+            {{ movement_form.quantity }}
+            {{ movement_form.quantity.errors }}
+          </div>
+          <div class="col-12 col-md-8">
+            <label class="form-label fw-semibold">Motivo</label>
+            {{ movement_form.reason }}
+            {{ movement_form.reason.errors }}
+          </div>
+        </div>
+      </div>
+
+      <div class="movement-section movement-extra movement-transfer-existing">
+        <div class="movement-section-title">Transferir para produto existente</div>
+        <div>
+          <label class="form-label fw-semibold">Produto de destino</label>
+          {{ movement_form.destination_product }}
+          {{ movement_form.destination_product.errors }}
+        </div>
+      </div>
+
+      <div class="movement-section movement-extra movement-transfer-new">
+        <div class="movement-section-title">Criar novo produto</div>
+        <div class="row g-3">
+          <div class="col-12 col-md-6">
+            <label class="form-label fw-semibold">Nome do novo produto</label>
+            {{ movement_form.new_product_name }}
+            {{ movement_form.new_product_name.errors }}
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label fw-semibold">Categoria do novo produto</label>
+            {{ movement_form.new_product_category }}
+            {{ movement_form.new_product_category.errors }}
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label fw-semibold">Preço do novo produto</label>
+            {{ movement_form.new_product_sale_price }}
+            {{ movement_form.new_product_sale_price.errors }}
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-outline-secondary rounded-pill" id="movement-cancel">Cancelar</button>
+        <button type="submit" class="btn btn-sys-primary rounded-pill px-4" id="movement-submit">Salvar movimentação</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const modalEl = document.getElementById("movementModal");
+    const modalPanel = modalEl ? modalEl.querySelector(".movement-modal-panel") : null;
+    const movementForm = document.getElementById("movement-form");
+    const openButtons = document.querySelectorAll(".js-open-movement-modal");
+    const movementType = document.getElementById("id_movement_type");
+    const sourceProduct = document.getElementById("id_source_product");
+    const quantityField = document.getElementById("id_quantity");
+    const reasonField = document.getElementById("id_reason");
+    const destinationProduct = document.getElementById("id_destination_product");
+    const newProductName = document.getElementById("id_new_product_name");
+    const newProductCategory = document.getElementById("id_new_product_category");
+    const newProductSalePrice = document.getElementById("id_new_product_sale_price");
+    const extraExisting = document.querySelector(".movement-transfer-existing");
+    const extraNew = document.querySelector(".movement-transfer-new");
+    const openOnLoad = {{ open_movement_modal|yesno:"true,false" }};
+    const closeButton = document.getElementById("movement-close");
+    const cancelButton = document.getElementById("movement-cancel");
+    const submitButton = document.getElementById("movement-submit");
+
+    function hasMovementErrors() {
+      return Boolean(modalEl && modalEl.querySelector(".errorlist"));
+    }
+
+    function refreshSubmitState() {
+      if (!submitButton) return;
+      const blocked = hasMovementErrors();
+      submitButton.disabled = blocked;
+      submitButton.classList.toggle("is-blocked", blocked);
+      submitButton.title = blocked ? "Corrija os campos destacados para salvar." : "";
+    }
+
+    function toggleExtras() {
+      if (!movementType) return;
+      const type = movementType.value;
+      if (extraExisting) {
+        extraExisting.style.display = type === "TRANSFER_EXISTENTE" ? "block" : "none";
+      }
+      if (extraNew) {
+        extraNew.style.display = type === "TRANSFER_NOVO" ? "block" : "none";
+      }
+    }
+
+    function openModal() {
+      if (!modalEl) return;
+      modalEl.classList.add("is-open");
+      modalEl.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeModal() {
+      if (!modalEl) return;
+      modalEl.classList.remove("is-open");
+      modalEl.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+    }
+
+    function resetMovementFields(productId) {
+      if (movementType) {
+        movementType.value = "RETIRADA";
+      }
+      if (sourceProduct) {
+        sourceProduct.value = productId || "";
+      }
+      if (quantityField) {
+        quantityField.value = 1;
+      }
+      if (reasonField) {
+        reasonField.value = "";
+      }
+      if (destinationProduct) {
+        destinationProduct.value = "";
+      }
+      if (newProductName) {
+        newProductName.value = "";
+      }
+      if (newProductCategory) {
+        newProductCategory.value = "";
+      }
+      if (newProductSalePrice) {
+        newProductSalePrice.value = "";
+      }
+      if (modalEl) {
+        modalEl.querySelectorAll(".errorlist").forEach((node) => node.remove());
+        modalEl.querySelectorAll(".is-invalid").forEach((node) => node.classList.remove("is-invalid"));
+        modalEl.querySelectorAll("[aria-invalid='true']").forEach((node) => node.removeAttribute("aria-invalid"));
+      }
+      refreshSubmitState();
+    }
+
+    openButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        resetMovementFields(button.dataset.productId);
+        toggleExtras();
+        openModal();
+      });
+    });
+
+    if (movementType) {
+      movementType.addEventListener("change", toggleExtras);
+    }
+    if (movementForm) {
+      movementForm.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && event.target && event.target.tagName !== "TEXTAREA") {
+          event.preventDefault();
+        }
+      });
+    }
+    if (modalPanel) {
+      modalPanel.addEventListener("click", (event) => {
+        event.stopPropagation();
+      });
+      modalPanel.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+      });
+    }
+    if (modalEl) {
+      modalEl.querySelectorAll("input, select, textarea").forEach((field) => {
+        field.addEventListener("input", () => {
+          const errorList = field.parentElement ? field.parentElement.querySelector(".errorlist") : null;
+          if (errorList) {
+            errorList.remove();
+          }
+          field.classList.remove("is-invalid");
+          field.removeAttribute("aria-invalid");
+          refreshSubmitState();
+        });
+        field.addEventListener("change", () => {
+          const errorList = field.parentElement ? field.parentElement.querySelector(".errorlist") : null;
+          if (errorList) {
+            errorList.remove();
+          }
+          field.classList.remove("is-invalid");
+          field.removeAttribute("aria-invalid");
+          refreshSubmitState();
+        });
+      });
+    }
+    if (closeButton) {
+      closeButton.addEventListener("click", closeModal);
+    }
+    if (cancelButton) {
+      cancelButton.addEventListener("click", closeModal);
+    }
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeModal();
+      }
+    });
+
+    toggleExtras();
+    refreshSubmitState();
+    if (openOnLoad) {
+      toggleExtras();
+      openModal();
+      refreshSubmitState();
+    }
+  })();
+</script>
 {% endblock %}
+
+
+
+
